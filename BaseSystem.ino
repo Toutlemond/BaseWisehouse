@@ -412,16 +412,7 @@ void loop() {
   currentMillis = millis();
   //Проверим настроецный режим или обычный
   if (NormalMode == 1) {
-    //проверим Не указан ли режим прямого управления - в такой режиме реле включается без термостата напрямую из веб интерфейса
-    // но в таком случае не читаются датчики TODO:Вынеи чтение датчиков в отдельный метод и вызывай постоянно
-    if (DirectControll == 1) {
-      if (currentMillis - previousMillis >= interval) {
-        Serial.println("напрямую управляем");
-        server.handleClient();
-      }
-    } else {
       //В цикле без задержек постоянно выполняем :
-      termostat();
       if (btn1.click()) {
         Serial.println("click");
         SendToServer("buttonPressed", "button", "1");
@@ -430,37 +421,23 @@ void loop() {
       if (currentMillis - previousMillis >= interval) {
         previousMillis = currentMillis;
         server.handleClient();
-        // debuginfo();
-
-        // checkTempSensor();
-        DHTtoSerial();
       }
-
       //раз в 60 секунд
       if (currentMillis - previousMillisForSend >= intervalForSend) {
         previousMillisForSend = currentMillis;
         if ((ip1byte.toInt() != 255) && (ip1byte.toInt() != 0) ) {
-          SendToServer("tempChanged", "curTemp", String(digiTemp1)); // Для Темературы
-          SendToServer("humChanged", "curHumid", String(humidity)); // Для влажности
           SendToServer("keepalive", "alive", "1");
+           Serial.println("keepalive");
         }
       }
+      
       uptime = ((currentMillis / 1000) / 60);
-
-      //Один раз в час
-      if (currentMillis - previousOncePerHour >= 3600000) {
-        previousOncePerHour = currentMillis;
-
-      }
 
       // Перезагружаем раз в 30 минут. На всякий случай
       resetMinute = ((resetDelay - currentMillis) / 1000) / 60;
       if (currentMillis  >= resetDelay) {
         resetFunc(); //вызываем reset // пока закомментируем проверим аптайм TODO: Сделать из админки
-        Serial.println("Reset!");
       }
-
-    }
   } else {
 
     // если выбран настроечный режим - Ничего не делаем, лишь обрабатываем сервер- ждем настройки
