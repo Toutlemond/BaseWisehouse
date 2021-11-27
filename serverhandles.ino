@@ -14,21 +14,6 @@ void handleRoot() {
   contentText += "а также изменить настройки сервера умного дома(не рекомендуется)\n";
   contentText += "</p>";
   contentText += "<hr>\n";
-  contentText += "<p>Уставка температуры - ";
-  contentText += tempUstavka;
-  contentText += "гр.С</p>";
-  contentText += "<p>Температура первого датчика - ";
-  contentText += digiTemp1;
-  contentText += "гр.С</p>";
-  contentText += "<p>Максимальная температура - ";
-  contentText += maxTemp;
-  contentText += " гр.С</p>";
-  contentText += "<p>Минимальная температура - ";
-  contentText += minTemp;
-  contentText += " гр.С</p>";
-  contentText += "<p>Дельта значений температуры - ";
-  contentText += deltaTemp;
-  contentText += " гр.С</p>";
   contentText += "<p><strong>Время до перезагрузки- ";
   contentText += resetMinute;
   contentText += " мин</strong></p>";
@@ -52,38 +37,6 @@ void handleRoot() {
   server.send(200, "text/html", htmlText);
 }
 
-void handleGettemp() {
-  htmlText = "";
-  htmlText = digiTemp1;
-  server.send(200, "text/html", htmlText);
-}
-void handleSettemp() {
-  String setTemp = server.arg("setTemp");
-  Serial.println(setTemp);
-  if (setTemp.length() > 0) {
-    Serial.println("clearing minTemp eeprom");
-    for (int i = 185; i < 190; ++i) {
-      EEPROM.write(i, 0);
-    }
-    Serial.println(setTemp);
-    Serial.println("");
-    Serial.println("writing eeprom setTemp:");
-    for (int i = 0; i < setTemp.length(); ++i)
-    {
-      EEPROM.write(185 + i, setTemp[i]);
-      Serial.print("Wrote: ");
-      Serial.print(185 + i);
-      Serial.print(" -  ");
-      Serial.println(setTemp[i]);
-    }
-
-    EEPROM.commit();
-  }
-  contentText = "OK";
-  htmlText = contentText;
-  server.send(200, "text/html", htmlText);
-
-}
 void handleClick(){
   contNumber = server.arg("contNumber");
   htmlText = "";
@@ -204,15 +157,6 @@ void handleConfig() {
 
   contentText += randNumber;
   contentText += F("</span></p>\n");
-  contentText += F("<p>Верхняя уставка_______ <span class=\"bold\"><input type=\"text\" name=\"maxTemp\" value=\"");
-  contentText += maxTemp;
-  contentText += F("\"></span></p>\n");
-  contentText += F("<p>Нижня уставка_________ <span class=\"bold\"><input type=\"text\" name=\"minTemp\" value=\"");
-  contentText += minTemp;
-  contentText += F("\"></span></p>\n");
-  contentText += F("<p>Дельта температуры____ <span class=\"bold\"><input type=\"text\" name=\"deltaTemp\" value=\"");
-  contentText += deltaTemp;
-  contentText += F("\"></span></p>\n");
   contentText += F("<p>Прямое Управление <span class=\"bold\"><select  name=\"directcont\"><option value=\"0\" selected>Нет</option><option value=\"1\" >Да</option></select>");
   contentText += F("</span></p>\n");
 
@@ -292,9 +236,6 @@ void handleSetSrv() {
   String qsid = server.arg("ssid");
   String qpass = server.arg("pass");
   String contName = server.arg("contName");
-  String deltaTemp = server.arg("deltaTemp");
-  String maxTemp = server.arg("maxTemp");
-  String minTemp = server.arg("minTemp");
   String directcont = server.arg("directcont");
 
   if (qsid.length() > 0 && qpass.length() > 0) {
@@ -343,63 +284,6 @@ void handleSetSrv() {
     EEPROM.commit();
   }
 
-  if (deltaTemp.length() > 0) {
-    Serial.println("clearing deltaTemp eeprom");
-    for (int i = 171; i < 175; ++i) {
-      EEPROM.write(i, 0);
-    }
-    Serial.println(deltaTemp);
-    Serial.println("");
-    Serial.println("writing eeprom deltaTemp:");
-    for (int i = 0; i < deltaTemp.length(); ++i)
-    {
-      EEPROM.write(171 + i, deltaTemp[i]);
-      Serial.print("Wrote: ");
-      Serial.print(171 + i);
-      Serial.print(" -  ");
-      Serial.println(deltaTemp[i]);
-    }
-
-    EEPROM.commit();
-  }
-  if (maxTemp.length() > 0) {
-    Serial.println("clearing maxTemp eeprom");
-    for (int i = 176; i < 180; ++i) {
-      EEPROM.write(i, 0);
-    }
-    Serial.println(maxTemp);
-    Serial.println("");
-    Serial.println("writing eeprom maxTemp:");
-    for (int i = 0; i < maxTemp.length(); ++i)
-    {
-      EEPROM.write(176 + i, maxTemp[i]);
-      Serial.print("Wrote: ");
-      Serial.print(176 + i);
-      Serial.print(" -  ");
-      Serial.println(maxTemp[i]);
-    }
-
-    EEPROM.commit();
-  }
-  if (minTemp.length() > 0) {
-    Serial.println("clearing minTemp eeprom");
-    for (int i = 181; i < 185; ++i) {
-      EEPROM.write(i, 0);
-    }
-    Serial.println(minTemp);
-    Serial.println("");
-    Serial.println("writing eeprom minTemp:");
-    for (int i = 0; i < minTemp.length(); ++i)
-    {
-      EEPROM.write(181 + i, minTemp[i]);
-      Serial.print("Wrote: ");
-      Serial.print(181 + i);
-      Serial.print(" -  ");
-      Serial.println(minTemp[i]);
-    }
-
-    EEPROM.commit();
-  }
   //Прощьем ключ что конфиг записан
   EEPROM.write(193, directcont.toInt());
   EEPROM.commit();

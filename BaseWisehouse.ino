@@ -1,4 +1,4 @@
-//// Прошивка Базовая. На ее основе можно будет лепить другие вещи.
+//// Прошивка для розеток sonoff
 ///  14.10.2016
 ///  16.10.2017 - добавил выравнивание в HTML
 //   15.10.2018 - Добавлена функция перезагрузки каждые 500 000 мс
@@ -7,20 +7,10 @@
 //   24.09.2020 - Исправлен метод отправки на сервер
 //   03.11.2020 - Добавим поддержку 433 мГц устройств
 
-//Что требуется сделать
-// 1 - описать как ставить уставку из сети.
-// 2 - Сделать ребут из сети
-// 3 - Сделать отправку данных на сервер - сейчас она поломана - отправлять и текущую температуру и уставку и возможно чтото еще
-
-
-// Version 0.8
+// Version 0.8.1
 
 /// Задачи -
-/// 1. Опрос Датчиков
-/// 1.1.Проверка датчика Газа
-/// 1.2.проверять значение термодатчика
-/// 1.3. Проверять значение датчика влажности(или датчика намокания)
-/// 1.4. Проверять значение датчика тока
+
 
 /// 2. WiFI
 /// 2.1 Подключаться к точке доступа если, настроек нет, создавать свою точку доступа.
@@ -62,39 +52,21 @@
 #include <ESP8266HTTPClient.h>
 #include <EEPROM.h>
 //#include <DHT.h>
-#include <OneWire.h>
-#include <DallasTemperature.h>
+
 #include "button.h"
-#include <RCSwitch.h>
 
 
 ///////////////////////////////////НАЗНАЧЕНИЕ НОЖЕК ////////////////////////////////////////////////////
-#define REOSTATPIN A0
-//const int SinkPin = 13;/// Вход для сенсора затопления
-const int ledPin = 5;    /// Выход на светодиод
-const int OPTRON = 5;          /// Пин на оптрон Тот же самый
-const int GREENOPTRON = 15 ;    /// Пин Для мигания зеленым
-const int RELEY1 = 14;         /// Пин Для Реле 1
-const int RELEY2 = 12 ;         /// Пин Для Реле 2
 
-//#define DHTTYPE DHT11
-//#define DHTPIN 13        /// Вход для датчика температуры и влажности
-#define ONE_WIRE_BUS 13 // если датчик DS
-const int gasPin = 4;    /// Вход для цифрового датчика газа
-const int caniSleep = 0; /// нулевая нога, если при работе закоммутировано - не засыпает
+int PIN_RELAY = 12;
+int PIN_LED = 13;
+int PIN_BUTTON = 0;
 
-Button btn1(caniSleep);
-
-
-
-
-
+Button btn1(PIN_BUTTON);
 
 // Имя точки доступа в случае если не подключилось к сети пользователя
-const char *ssid = "WiseRozeвеt";
+const char *ssid = "WiseRozetka1";
 const char *password = "12345678";
-
-const int DHTFlag = 0; // Флаг используется ли DHT(1) или Dallas DS1820 (0)
 
 const int configBite = 20;
 int tryCount = 0;
@@ -110,28 +82,6 @@ char* functions[] = {"tempChanged", "humidityChange"};
 char* values[] = {"temp", "humidity "};
 
 
-////////////////////Определим перемнные для крутилки//////////////////////
-int samples;
-String maxTemp;
-String minTemp;
-String setTemp;
-int flagTempset = 0;
-int DirectControll = 0;
-int maxTempInt;
-int minTempInt;
-int setTempint;
-int adcMin = 0;
-int adcMax = 1002;
-float temtStep;
-float tempUstavka;
-int NormalMode = 0;
-String deltaTemp; /////////Дельта для срабатывания термодатчика.
-
-////////////////////Определим перемнные для Цифрового датчика температуры DS18B20//////////////////////
-
-float digiTemp1;
-float digiTemp2;
-float humidity, temp_f;
 ///////////////////////////////////Подготовка базовых текстов HTML//////////////////////////////////////////
 String additionMsg = "";
 // Базовый контент ниже ////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -158,22 +108,8 @@ const long interval2 = 10000;             // Время через которо�
 const long interval3 = 1000;              // Как часто обрабатывать WEB-запросы
 const long intervalForSend = 60000;              // Как часто обрабатывать WEB-запросы
 String contNumber;
-
-/////////////////////////////////// Включение функций /////////////////////////////////////////////////
-#if (DHTON == 1)
-DHT dht(DHTPIN, DHTTYPE);
-#endif
-
-#if (ONEWIREON == 1)
-OneWire oneWire(ONE_WIRE_BUS);
-DallasTemperature sensors(&oneWire);
-#endif
-
-//RCSwitch
-#if (RCSWITCHON == 1)
-RCSwitch mySwitch = RCSwitch();
-#endif
-
+int DirectControll = 0;
+int NormalMode = 0;
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 int counterTemp = 0;
@@ -191,11 +127,8 @@ String ssidFromEprom;
 String passFromEprom;
 String contNameFromEprom;
 
-/*const char *ssidFromEprom;
-  const char *passFromEprom;
-  const char *contNameFromEprom;
-*/
 int numFromEprom;
+
 long int randNumber = random(100000, 999999);
 
 
@@ -210,32 +143,13 @@ void setup() {
   Serial.begin(115200);
   Serial.println();
 
-  ///////Запускаем DHT
-#if (DHTON == 1)
-  dht.begin();
-#endif
 
-#if (RCSWITCHON == 1)
-  mySwitch.enableReceive(0);  // Receiver on interrupt 0 => that is pin #2
-#endif
+pinMode(PIN_LED, OUTPUT);
+pinMode(PIN_RELAY, OUTPUT);
+pinMode(PIN_BUTTON, INPUT);
 
-#if (ONEWIREON == 1)
-  sensors.begin();
-#endif
-  ///////////////////////////Определяем входы выходы //////////////////////////////////
-  /*pinMode(ledPin, OUTPUT);                   // Назначим пины как выход
-    pinMode(SinkPin, INPUT);                   // Назначим пины как вход
-    pinMode(gasPin, INPUT);                    // Назначим пины как вход
-    pinMode(caniSleep, INPUT);                 // Назначим пины как вход
-  */
-  pinMode(OPTRON, OUTPUT);
-  pinMode(GREENOPTRON, OUTPUT);
-  pinMode(RELEY1, OUTPUT);
-  pinMode(RELEY2, OUTPUT);
-
-  digitalWrite(ledPin, 0);                   // Потушим пока пин.
-  digitalWrite(RELEY1, HIGH);                   // Потушим пока пин. // Реле с обратной логикой
-  digitalWrite(RELEY2, HIGH);                   // Потушим пока пин.
+digitalWrite(PIN_RELAY, HIGH);
+digitalWrite(PIN_LED, LOW);
 
   /////Переменную мы определили выше а тут напишем в нее Все наполнение!////////////////////////////////////////////////////////////////////
 
@@ -272,7 +186,7 @@ void setup() {
   Serial.println();
   Serial.println("------------------------------------------------");
   Serial.println("|                     WISEHOUSE                 |");
-  Serial.println("|Version - 0.8.1- 03.11.2020 - Add RCSwittch    |");
+  Serial.println("|Version - 0.8.1- 27.11.2021 - SOnoffRozetka    |");
   Serial.println("------------------------------------------------");
   Serial.println();
   Serial.println("Read data from EEPROM...");
@@ -307,12 +221,6 @@ void setup() {
     passFromEprom = stringEpromRead(125, 149);
     Serial.print("Controller Name-: ");
     contNameFromEprom = stringEpromRead(150, 170);
-    Serial.print("deltaTemp-: ");
-    deltaTemp = stringEpromRead(171, 175);
-    Serial.print("maxTemp-: ");
-    maxTemp = stringEpromRead(176, 180);
-    Serial.print("minTemp-: ");
-    minTemp = stringEpromRead(181, 185);
     Serial.print("DirectControll-: ");
     DirectControll = EEPROM.read(193);
     Serial.println(DirectControll);
@@ -334,18 +242,18 @@ void setup() {
   // Определяем режим работы Или нормальный или если нажата кнопка настроечный
   Serial.println("");
   for (int i = 0; i < 10; ++i) {
-    digitalWrite(ledPin, HIGH);
+    digitalWrite(PIN_LED, HIGH);
     delay(100);
-    digitalWrite(ledPin, LOW);
+    digitalWrite(PIN_LED, LOW);
     delay(100);
-    NormalMode = digitalRead(caniSleep);
+    NormalMode = digitalRead(PIN_BUTTON);
   }
 
 
 
-  digitalWrite(ledPin, HIGH);
+  digitalWrite(PIN_LED, HIGH);
   delay(1000);
-  digitalWrite(ledPin, LOW);
+  digitalWrite(PIN_LED, LOW);
 
   Serial.print(F("NormalMode"));
   Serial.print(" - ");
@@ -366,9 +274,6 @@ void setup() {
   server.on("/on", handleOn);
   server.on("/click", handleClick);
   server.on("/off", handleOff);
-  server.on("/gettemp", handleGettemp);
-  server.on("/settemp", handleSettemp);
-
 
 
   /////////////////Если нет такоего события
@@ -376,52 +281,13 @@ void setup() {
   Serial.println("HTTP SERVER STARTED");
   Serial.println("");
   Serial.println("");
-
-
-
-  //////////////////////Для крутилки рассчет значений////////////////////////////////////////
-  if (NormalMode == 1) {
-    if (key != 255) {
-      temtStep = (adcMax - adcMin) / (maxTemp.toInt() - minTemp.toInt());
-      Serial.print("temtStep");
-      Serial.print(" - ");
-      Serial.println(temtStep);
-    }
-
-  } else {
-
-    // Перебор всего епрома.
-    for (ee = 0; ee <= 512; ee++) {
-      eevalue = EEPROM.read(ee);
-
-      Serial.print(ee);
-      Serial.print("\t");
-      Serial.print(eevalue, DEC);
-      Serial.println();
-    }
-    Serial.println(F("It is a setup mode. Please fing wiseIs network and setup device"));
-  }
-
-
-
-
-
 }
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void loop() {
   currentMillis = millis();
   //Проверим настроецный режим или обычный
   if (NormalMode == 1) {
-    //проверим Не указан ли режим прямого управления - в такой режиме реле включается без термостата напрямую из веб интерфейса
-    // но в таком случае не читаются датчики TODO:Вынеи чтение датчиков в отдельный метод и вызывай постоянно
-    if (DirectControll == 1) {
-      if (currentMillis - previousMillis >= interval) {
-        Serial.println("напрямую управляем");
-        server.handleClient();
-      }
-    } else {
       //В цикле без задержек постоянно выполняем :
-      termostat();
       if (btn1.click()) {
         Serial.println("click");
         SendToServer("buttonPressed", "button", "1");
@@ -430,37 +296,23 @@ void loop() {
       if (currentMillis - previousMillis >= interval) {
         previousMillis = currentMillis;
         server.handleClient();
-        // debuginfo();
-
-        // checkTempSensor();
-        DHTtoSerial();
       }
-
       //раз в 60 секунд
       if (currentMillis - previousMillisForSend >= intervalForSend) {
         previousMillisForSend = currentMillis;
         if ((ip1byte.toInt() != 255) && (ip1byte.toInt() != 0) ) {
-          SendToServer("tempChanged", "curTemp", String(digiTemp1)); // Для Темературы
-          SendToServer("humChanged", "curHumid", String(humidity)); // Для влажности
           SendToServer("keepalive", "alive", "1");
+           Serial.println("keepalive");
         }
       }
+      
       uptime = ((currentMillis / 1000) / 60);
-
-      //Один раз в час
-      if (currentMillis - previousOncePerHour >= 3600000) {
-        previousOncePerHour = currentMillis;
-
-      }
 
       // Перезагружаем раз в 30 минут. На всякий случай
       resetMinute = ((resetDelay - currentMillis) / 1000) / 60;
       if (currentMillis  >= resetDelay) {
         resetFunc(); //вызываем reset // пока закомментируем проверим аптайм TODO: Сделать из админки
-        Serial.println("Reset!");
       }
-
-    }
   } else {
 
     // если выбран настроечный режим - Ничего не делаем, лишь обрабатываем сервер- ждем настройки

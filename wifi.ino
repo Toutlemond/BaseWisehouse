@@ -33,9 +33,9 @@ void connectToAP2() {
   WiFi.begin(ssidEprom, passEprom);
   Serial.print(ssidEprom);
   for (int tryCount = 0; tryCount <= 30; tryCount++) {
-    digitalWrite(ledPin, HIGH);
+    digitalWrite(PIN_LED, HIGH);
     delay(500);
-    digitalWrite(ledPin, LOW);
+    digitalWrite(PIN_LED, LOW);
     Serial.print(".");
     if (WiFi.status() == WL_CONNECTED) {
 
@@ -87,7 +87,7 @@ String SendToServer(String whMethod, String whVName, String whValue) {
   Link += String(host) ;
   Link += "/objects/" + getData;
 
-  http.begin(Link);     //Specify request destination
+  http.begin(client,Link);     //Specify request destination
 
   int httpCode = http.GET();            //Send the request
   String payload = http.getString();    //Get the response payload
@@ -134,7 +134,7 @@ String CreateServerObject(String whVName) {
   Link += String(host) ;
   Link += "/objects/" + getData;
  Serial.println(Link);
-  http.begin(Link);     //Specify request destination
+  http.begin(client,Link);     //Specify request destination
 
   int httpCode = http.GET();            //Send the request
   String payload = http.getString();    //Get the response payload
@@ -179,27 +179,27 @@ void wifiscan() {
 void connectedBlink() {
 
   for (int blCount = 0; blCount <= 20; blCount++) {
-    digitalWrite(ledPin, HIGH);
+    digitalWrite(PIN_LED, HIGH);
     delay(10);
-    digitalWrite(ledPin, LOW);
+    digitalWrite(PIN_LED, LOW);
     delay(10);
   }
-  digitalWrite(ledPin, HIGH);
+  digitalWrite(PIN_LED, HIGH);
   delay(1000);
-  digitalWrite(ledPin, LOW);
+  digitalWrite(PIN_LED, LOW);
 }
 
 void readSensorBlink() {
 
   for (int blCount = 0; blCount <= 5; blCount++) {
-    digitalWrite(ledPin, HIGH);
+    digitalWrite(PIN_LED, HIGH);
     delay(100);
-    digitalWrite(ledPin, LOW);
+    digitalWrite(PIN_LED, LOW);
     delay(100);
   }
-  digitalWrite(ledPin, HIGH);
+  digitalWrite(PIN_LED, HIGH);
   delay(500);
-  digitalWrite(ledPin, LOW);
+  digitalWrite(PIN_LED, LOW);
 }
 void testOrCreateObject() {
   
