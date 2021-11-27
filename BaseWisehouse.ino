@@ -91,7 +91,7 @@ Button btn1(caniSleep);
 
 
 // Имя точки доступа в случае если не подключилось к сети пользователя
-const char *ssid = "WiseIS";
+const char *ssid = "WiseRozeвеt";
 const char *password = "12345678";
 
 const int DHTFlag = 0; // Флаг используется ли DHT(1) или Dallas DS1820 (0)
