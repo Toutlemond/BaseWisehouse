@@ -57,6 +57,7 @@ void handleClick(){
     //Serial.print("Clicked");
   server.send(200, "text/html", htmlText);
   }
+
 void handleOn() {
   contNumber = server.arg("contNumber");
   htmlText = "";

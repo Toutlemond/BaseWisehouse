@@ -72,6 +72,8 @@ const int configBite = 20;
 int tryCount = 0;
 int TempModul = 0; //
 
+int contact = 0; //
+
 /// Далее 21,22,23,24 байты это будет адрес сервера.
 String ip1byte = "";
 String ip2byte = "";
@@ -148,7 +150,7 @@ pinMode(PIN_LED, OUTPUT);
 pinMode(PIN_RELAY, OUTPUT);
 pinMode(PIN_BUTTON, INPUT);
 
-digitalWrite(PIN_RELAY, HIGH);
+digitalWrite(PIN_RELAY, LOW);
 digitalWrite(PIN_LED, LOW);
 
   /////Переменную мы определили выше а тут напишем в нее Все наполнение!////////////////////////////////////////////////////////////////////
