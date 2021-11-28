@@ -51,9 +51,9 @@ void handleClick(){
   htmlText += contentText;
   htmlText += endText;
   
-   digitalWrite(contNumber.toInt(), LOW);
+   digitalWrite(contNumber.toInt(), HIGH);
     delay(1000);
-    digitalWrite(contNumber.toInt(), HIGH);
+    digitalWrite(contNumber.toInt(), LOW);
     //Serial.print("Clicked");
   server.send(200, "text/html", htmlText);
   }
@@ -70,7 +70,7 @@ void handleOn() {
   htmlText = baseText;
   htmlText += contentText;
   htmlText += endText;
-  digitalWrite(contNumber.toInt(), LOW);
+  digitalWrite(contNumber.toInt(), HIGH);
   server.send(200, "text/html", htmlText);
 }
 void handleOff() {
@@ -81,7 +81,7 @@ void handleOff() {
   htmlText = baseText;
   htmlText += contentText;
   htmlText += endText;
-  digitalWrite(contNumber.toInt(), HIGH);
+  digitalWrite(contNumber.toInt(), LOW);
   server.send(200, "text/html", htmlText);
 }
 void handleContacts() {
