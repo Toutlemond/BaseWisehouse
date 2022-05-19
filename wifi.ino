@@ -87,7 +87,7 @@ String SendToServer(String whMethod, String whVName, String whValue) {
   Link += String(host) ;
   Link += "/objects/" + getData;
 
-  http.begin(Link);     //Specify request destination
+  http.begin(client,Link);     //Specify request destination
 
   int httpCode = http.GET();            //Send the request
   String payload = http.getString();    //Get the response payload
@@ -134,7 +134,7 @@ String CreateServerObject(String whVName) {
   Link += String(host) ;
   Link += "/objects/" + getData;
  Serial.println(Link);
-  http.begin(Link);     //Specify request destination
+  http.begin(client, Link);     //Specify request destination
 
   int httpCode = http.GET();            //Send the request
   String payload = http.getString();    //Get the response payload

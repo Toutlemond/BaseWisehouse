@@ -71,10 +71,10 @@
 ///////////////////////////////////НАЗНАЧЕНИЕ НОЖЕК ////////////////////////////////////////////////////
 #define REOSTATPIN A0
 //const int SinkPin = 13;/// Вход для сенсора затопления
-const int ledPin = 5;    /// Выход на светодиод
+const int ledPin = 13;    /// Выход на светодиод
 const int OPTRON = 5;          /// Пин на оптрон Тот же самый
 const int GREENOPTRON = 15 ;    /// Пин Для мигания зеленым
-const int RELEY1 = 14;         /// Пин Для Реле 1
+const int RELEY1 = 12;         /// Пин Для Реле 1
 const int RELEY2 = 12 ;         /// Пин Для Реле 2
 
 //#define DHTTYPE DHT11
@@ -91,7 +91,7 @@ Button btn1(caniSleep);
 
 
 // Имя точки доступа в случае если не подключилось к сети пользователя
-const char *ssid = "WiseIS";
+const char *ssid = "WiseRizetka";
 const char *password = "12345678";
 
 const int DHTFlag = 0; // Флаг используется ли DHT(1) или Dallas DS1820 (0)
@@ -207,7 +207,7 @@ void(* resetFunc) (void) = 0;
 
 void setup() {
   delay(1000);
-  Serial.begin(115200);
+  Serial.begin(74800);
   Serial.println();
 
   ///////Запускаем DHT
