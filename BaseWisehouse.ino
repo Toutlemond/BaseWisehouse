@@ -65,7 +65,7 @@ int PIN_BUTTON = 0;
 Button btn1(PIN_BUTTON);
 
 // Имя точки доступа в случае если не подключилось к сети пользователя
-const char *ssid = "WiseRozetka1";
+const char *ssid = "WiseRozetka";
 const char *password = "12345678";
 
 const int configBite = 20;
@@ -107,7 +107,7 @@ unsigned long previousOncePerMinute = 0;
 unsigned long previousOncePerHour = 0;
 const long interval = 2000;               // как часто читать сенсор
 const long interval2 = 10000;             // Время через которое пора спать
-const long interval3 = 1000;              // Как часто обрабатывать WEB-запросы
+const long interval3 = 2000;              // Как часто обрабатывать WEB-запросы
 const long intervalForSend = 60000;              // Как часто обрабатывать WEB-запросы
 String contNumber;
 int DirectControll = 0;
@@ -142,16 +142,16 @@ void(* resetFunc) (void) = 0;
 
 void setup() {
   delay(1000);
-  Serial.begin(115200);
+  Serial.begin(74880);
   Serial.println();
 
 
-pinMode(PIN_LED, OUTPUT);
-pinMode(PIN_RELAY, OUTPUT);
-pinMode(PIN_BUTTON, INPUT);
+  pinMode(PIN_LED, OUTPUT);
+  pinMode(PIN_RELAY, OUTPUT);
+  pinMode(PIN_BUTTON, INPUT);
 
-digitalWrite(PIN_RELAY, LOW);
-digitalWrite(PIN_LED, LOW);
+  digitalWrite(PIN_RELAY, LOW);
+  digitalWrite(PIN_LED, LOW);
 
   /////Переменную мы определили выше а тут напишем в нее Все наполнение!////////////////////////////////////////////////////////////////////
 
@@ -231,24 +231,27 @@ digitalWrite(PIN_LED, LOW);
   }
   delay(500);
 
-
-  if (ssidFromEprom != 0) {
-    // соединяемся с извесными сетями
-    connectToAP2();
+  // соединяемся с извесными сетями
+  connectToAP2();
+  
+  Serial.print(F("NormalMode"));
+  Serial.print(F(" - "));
+  Serial.println(NormalMode);
+  
+  if (NormalMode != 0) {
     // Проверяем есть ли мы в мажердоме
     testOrCreateObject();
-  } else {
-    // или создаем свою сеть
-    setUpAP();
   }
+  
   // Определяем режим работы Или нормальный или если нажата кнопка настроечный
-  Serial.println("");
+  Serial.println("+");
   for (int i = 0; i < 10; ++i) {
+    Serial.print("+");
     digitalWrite(PIN_LED, HIGH);
     delay(100);
     digitalWrite(PIN_LED, LOW);
     delay(100);
-    NormalMode = digitalRead(PIN_BUTTON);
+   /// NormalMode = digitalRead(PIN_BUTTON);
   }
 
 
@@ -289,37 +292,38 @@ void loop() {
   currentMillis = millis();
   //Проверим настроецный режим или обычный
   if (NormalMode == 1) {
-      //В цикле без задержек постоянно выполняем :
-      if (btn1.click()) {
-        Serial.println("click");
-        SendToServer("buttonPressed", "button", "1");
+    //В цикле без задержек постоянно выполняем :
+    if (btn1.click()) {
+      Serial.println("click");
+      SendToServer("buttonPressed", "button", "1");
+    }
+    //раз в 2 секунды
+    if (currentMillis - previousMillis >= interval) {
+      previousMillis = currentMillis;
+      server.handleClient();
+    }
+    //раз в 60 секунд
+    if (currentMillis - previousMillisForSend >= intervalForSend) {
+      previousMillisForSend = currentMillis;
+      if ((ip1byte.toInt() != 255) && (ip1byte.toInt() != 0) ) {
+        SendToServer("keepalive", "alive", "1");
+        Serial.println("keepalive");
       }
-      //раз в 2 секунды
-      if (currentMillis - previousMillis >= interval) {
-        previousMillis = currentMillis;
-        server.handleClient();
-      }
-      //раз в 60 секунд
-      if (currentMillis - previousMillisForSend >= intervalForSend) {
-        previousMillisForSend = currentMillis;
-        if ((ip1byte.toInt() != 255) && (ip1byte.toInt() != 0) ) {
-          SendToServer("keepalive", "alive", "1");
-           Serial.println("keepalive");
-        }
-      }
-      
-      uptime = ((currentMillis / 1000) / 60);
+    }
 
-      // Перезагружаем раз в 30 минут. На всякий случай
-      resetMinute = ((resetDelay - currentMillis) / 1000) / 60;
-      if (currentMillis  >= resetDelay) {
-        resetFunc(); //вызываем reset // пока закомментируем проверим аптайм TODO: Сделать из админки
-      }
+    uptime = ((currentMillis / 1000) / 60);
+
+    // Перезагружаем раз в 30 минут. На всякий случай
+    resetMinute = ((resetDelay - currentMillis) / 1000) / 60;
+    if (currentMillis  >= resetDelay) {
+      resetFunc(); //вызываем reset // пока закомментируем проверим аптайм TODO: Сделать из админки
+    }
   } else {
 
     // если выбран настроечный режим - Ничего не делаем, лишь обрабатываем сервер- ждем настройки
     if (currentMillis - previousMillis >= interval3) {
       previousMillis = currentMillis;
+      Serial.println("handleClient");
       // перенес вызов сервера на раз в 1 секунду.
       // см. https://esp8266.ru/forum/threads/apparatnoe-preryvanie-vyzyvaet-perezagruzku-esp8266.938/page-2#post-18584
       server.handleClient();

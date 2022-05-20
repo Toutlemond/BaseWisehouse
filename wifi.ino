@@ -16,6 +16,7 @@ void setUpAP() {
   Serial.println(password);
   server.on("/", handleRoot);
   server.begin();
+  NormalMode = 0;
 }
 
 void connectToAP2() {
@@ -42,12 +43,14 @@ void connectToAP2() {
       tryCount = 0;
       Serial.print("Connected to ");
       Serial.println(ssidEprom);
+      NormalMode = 1;
       break;
     }
   }
   if (WiFi.status() != WL_CONNECTED) {
     Serial.println("");
     Serial.println("Can't connect to SSID from EEPROM");
+    NormalMode = 0;
     setUpAP();
   }
 
@@ -87,7 +90,7 @@ String SendToServer(String whMethod, String whVName, String whValue) {
   Link += String(host) ;
   Link += "/objects/" + getData;
 
-  http.begin(client,Link);     //Specify request destination
+  http.begin(client, Link);    //Specify request destination
 
   int httpCode = http.GET();            //Send the request
   String payload = http.getString();    //Get the response payload
@@ -105,7 +108,7 @@ String CreateServerObject(String whVName) {
   Serial.println("");
   String station, getData, Link;
   String host1 = "";
- // String localip = WiFi.localIP();
+  // String localip = WiFi.localIP();
   host1 = ip1byte;
   host1 += ".";
   host1 += ip2byte;
@@ -127,14 +130,14 @@ String CreateServerObject(String whVName) {
   getData += "&id=";
   getData += whVName;
   //getData += "&ipaddress=";
- // getData += localip
- Serial.println(whVName);
- 
+  // getData += localip
+  Serial.println(whVName);
+
   Link = "http://";
   Link += String(host) ;
   Link += "/objects/" + getData;
- Serial.println(Link);
-  http.begin(client,Link);     //Specify request destination
+  Serial.println(Link);
+  http.begin(client, Link);    //Specify request destination
 
   int httpCode = http.GET();            //Send the request
   String payload = http.getString();    //Get the response payload
@@ -202,7 +205,7 @@ void readSensorBlink() {
   digitalWrite(PIN_LED, LOW);
 }
 void testOrCreateObject() {
-  
+
   String ansver;
   ansver = SendToServer("keepalive", "alive", "1"); // отправим сообщение что мы живы  посмотрим ответ.
   Serial.println("Send Alive signal");
@@ -216,5 +219,5 @@ void testOrCreateObject() {
   }
   String ipaddress = WiFi.localIP().toString();
   SendToServer("setIpAddress", "ipaddress", ipaddress); // Для влажности
-  
+
 }
