@@ -20,7 +20,7 @@ void setUpAP() {
 }
 
 void connectToAP2() {
-
+  ssidFromEprom = "ROOter";
   unsigned char* buf = new unsigned char[100];
   ssidFromEprom.getBytes(buf, 100, 0);
 
@@ -32,6 +32,7 @@ void connectToAP2() {
   const char *passEprom = (const char*)buf2;
 
   WiFi.begin(ssidEprom, passEprom);
+
   Serial.print(ssidEprom);
   for (int tryCount = 0; tryCount <= 30; tryCount++) {
     digitalWrite(PIN_LED, HIGH);

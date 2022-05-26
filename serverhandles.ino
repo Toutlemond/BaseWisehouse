@@ -4,11 +4,11 @@ void handleRoot() {
 
   htmlText = "";
   contentText = "";
-  contentText = F("<h4>Главная страница контроллера - \n");
+  contentText = F("<h4>Главная страница радио - \n");
   contentText += contNameFromEprom;
   contentText += F("</h4>\n");
   contentText += "<hr>\n";
-  contentText += "<p>Здравствуйте! Вы попали на страницу контроллера WiseHouse.</p>\n";
+  contentText += "<p>Здравствуйте! Вы попали на страницу радио WiseHouse.</p>\n";
   contentText += "<p>Вы можете изменить настройки подключения к вашей сети WIFI, \n";
   contentText += "назначить имя этому контроллеру для показа его в мобильном приложении\n";
   contentText += "а также изменить настройки сервера умного дома(не рекомендуется)\n";
@@ -17,7 +17,7 @@ void handleRoot() {
   contentText += "<p><strong>Время до перезагрузки- ";
   contentText += resetMinute;
   contentText += " мин</strong></p>";
-    contentText += "<p><strong>Uptime системы- ";
+  contentText += "<p><strong>Uptime системы- ";
   contentText += uptime;
   contentText += " мин</strong></p>";
 
@@ -37,7 +37,7 @@ void handleRoot() {
   server.send(200, "text/html", htmlText);
 }
 
-void handleClick(){
+void handleClick() {
   contNumber = server.arg("contNumber");
   htmlText = "";
   contentText = "";
@@ -50,13 +50,13 @@ void handleClick(){
   htmlText = baseText;
   htmlText += contentText;
   htmlText += endText;
-  
-   digitalWrite(contNumber.toInt(), HIGH);
-    delay(1000);
-    digitalWrite(contNumber.toInt(), LOW);
-    //Serial.print("Clicked");
+
+  digitalWrite(contNumber.toInt(), HIGH);
+  delay(1000);
+  digitalWrite(contNumber.toInt(), LOW);
+  //Serial.print("Clicked");
   server.send(200, "text/html", htmlText);
-  }
+}
 
 void handleOn() {
   contNumber = server.arg("contNumber");
@@ -144,12 +144,12 @@ void handleConfig() {
       contentText += WiFi.SSID(i);
       contentText += ((WiFi.encryptionType(i) == ENC_TYPE_NONE) ? "</option> " : "*</option>");
       delay(10);
-     
+
     }
-   contentText += F("<select></span></p>\n");
+    contentText += F("<select></span></p>\n");
   }
 
-  contentText += F("<p>Пароль сети___________ <span class=\"bold\"><input type=\"text\" name=\"pass\" value=\"");
+  contentText += F("<p>Пароль сети___________ <span class=\"bold\"><input type=\"password\" name=\"pass\" value=\"");
   contentText += passFromEprom;
   contentText += F("\"></span></p>\n");
   contentText += F("<p>Имя контроллера_______ <span class=\"bold\"> <input type=\"text\" name=\"contName\" value=\"");
@@ -160,6 +160,22 @@ void handleConfig() {
   contentText += F("</span></p>\n");
   contentText += F("<p>Прямое Управление <span class=\"bold\"><select  name=\"directcont\"><option value=\"0\" selected>Нет</option><option value=\"1\" >Да</option></select>");
   contentText += F("</span></p>\n");
+
+  contentText += F("<p>radio Url 1:  <span class=\"bold\"><input type=\"text\" name=\"radurl0\" value=\"");
+  contentText += myStrings[0];
+  contentText += F("\"></span></p>\n");
+
+  contentText += F("<p>radio Url 2:  <span class=\"bold\"><input type=\"text\" name=\"radurl1\" value=\"");
+  contentText += myStrings[1];
+  contentText += F("\"></span></p>\n");
+
+  contentText += F("<p>radio Url 3:  <span class=\"bold\"><input type=\"text\" name=\"radurl2\" value=\"");
+  contentText += myStrings[2];
+  contentText += F("\"></span></p>\n");
+
+  contentText += F("<p>radio Url 4:  <span class=\"bold\"><input type=\"text\" name=\"radurl3\" value=\"");
+  contentText += myStrings[3];
+  contentText += F("\"></span></p>\n");
 
   // Далее завершение формы
   contentText += F("<input type=\"submit\" value=\"Сохранить\">\n");
@@ -238,6 +254,10 @@ void handleSetSrv() {
   String qpass = server.arg("pass");
   String contName = server.arg("contName");
   String directcont = server.arg("directcont");
+  String radurl0 = server.arg("radurl0");
+  String radurl1 = server.arg("radurl1");
+  String radurl2 = server.arg("radurl2");
+  String radurl3 = server.arg("radurl3");
 
   if (qsid.length() > 0 && qpass.length() > 0) {
     Serial.println("clearing eeprom");
@@ -284,6 +304,82 @@ void handleSetSrv() {
 
     EEPROM.commit();
   }
+
+  if (radurl0.length() > 0) {
+    Serial.println("clearing eeprom");
+    for (int i = 200; i < 240; ++i) {
+      EEPROM.write(i, 0);
+    }
+    Serial.println(radurl0);
+    Serial.println("");
+    Serial.println("writing radio Url - 0:");
+    for (int i = 0; i < radurl0.length(); ++i)
+    {
+      EEPROM.write(200 + i, radurl0[i]);
+      Serial.print("Wrote: ");
+      Serial.println(radurl0[i]);
+    }
+
+    EEPROM.commit();
+  }
+
+  if (radurl1.length() > 0) {
+    Serial.println("clearing eeprom");
+    for (int i = 241; i < 280; ++i) {
+      EEPROM.write(i, 0);
+    }
+    Serial.println(radurl1);
+    Serial.println("");
+    Serial.println("writing radio Url - 1:");
+    for (int i = 0; i < radurl1.length(); ++i)
+    {
+      EEPROM.write(241 + i, radurl1[i]);
+      Serial.print("Wrote: ");
+      Serial.println(radurl1[i]);
+    }
+
+    EEPROM.commit();
+  }
+
+
+  if (radurl2.length() > 0) {
+    Serial.println("clearing eeprom");
+    for (int i = 281; i < 320; ++i) {
+      EEPROM.write(i, 0);
+    }
+    Serial.println(radurl2);
+    Serial.println("");
+    Serial.println("writing radio Url - 2:");
+    for (int i = 0; i < radurl2.length(); ++i)
+    {
+      EEPROM.write(281 + i, radurl2[i]);
+      Serial.print("Wrote: ");
+      Serial.println(radurl2[i]);
+    }
+
+    EEPROM.commit();
+  }
+
+
+  if (radurl3.length() > 0) {
+    Serial.println("clearing eeprom");
+    for (int i = 321; i < 360; ++i) {
+      EEPROM.write(i, 0);
+    }
+    Serial.println(radurl3);
+    Serial.println("");
+    Serial.println("writing radio Url - 3:");
+    for (int i = 0; i < radurl3.length(); ++i)
+    {
+      EEPROM.write(321 + i, radurl3[i]);
+      Serial.print("Wrote: ");
+      Serial.println(radurl3[i]);
+    }
+
+    EEPROM.commit();
+  }
+
+
 
   //Прощьем ключ что конфиг записан
   EEPROM.write(193, directcont.toInt());

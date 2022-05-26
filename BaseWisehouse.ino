@@ -1,13 +1,9 @@
-//// Прошивка для розеток sonoff
-///  14.10.2016
-///  16.10.2017 - добавил выравнивание в HTML
-//   15.10.2018 - Добавлена функция перезагрузки каждые 500 000 мс
-//   22.10.2018 - Код разделен на разные файлы
-//   05.09.2019 - Сделана как базовая. Убраны некоторые вещи.
-//   24.09.2020 - Исправлен метод отправки на сервер
-//   03.11.2020 - Добавим поддержку 433 мГц устройств
+//// Прошивка для Радио Приемника - Собирается на Плате от Интерсвязи
+// Требуется:
+// Энкодер KY-040
+// Усилитель - Стерео усилитель мини c потенциометром (PAM8403)
 
-// Version 0.8.1
+// Version 0.8.2
 
 /// Задачи -
 
@@ -51,21 +47,27 @@
 #include <ESP8266WebServer.h>
 #include <ESP8266HTTPClient.h>
 #include <EEPROM.h>
-//#include <DHT.h>
 
 #include "button.h"
 
+#include <EncButton2.h> // энкодер
+
+//музыка
+#include "AudioFileSourceICYStream.h"
+#include "AudioFileSourceBuffer.h"
+#include "AudioGeneratorMP3.h"
+#include "AudioOutputI2SNoDAC.h"
 
 ///////////////////////////////////НАЗНАЧЕНИЕ НОЖЕК ////////////////////////////////////////////////////
 
 int PIN_RELAY = 12;
-int PIN_LED = 13;
+int PIN_LED = 5;
 int PIN_BUTTON = 0;
 
-Button btn1(PIN_BUTTON);
+Button btn1(PIN_BUTTON); //кнопка на gpio0
 
 // Имя точки доступа в случае если не подключилось к сети пользователя
-const char *ssid = "WiseRozetka";
+const char *ssid = "WiseRadio";
 const char *password = "12345678";
 
 const int configBite = 20;
@@ -83,6 +85,16 @@ String ip4byte = "";
 char* functions[] = {"tempChanged", "humidityChange"};
 char* values[] = {"temp", "humidity "};
 
+//Музыка
+
+char* myStrings[] = {"http://wasteland.su:8080/radio", "http://jfm1.hostingradio.ru:14536/ijstream.mp3", "http://prmstrm.1.fm:8000/blues", "http://station.waveradio.org/soviet.mp3"};
+String radioUrl = "";
+
+int currentStation = 0;
+int playingStatus = 0 ;
+int pauseCounter = 0 ;
+
+EncButton2<EB_ENC> enc(INPUT, 12, 14);  //энкодер на 12 и 14 пинах
 
 ///////////////////////////////////Подготовка базовых текстов HTML//////////////////////////////////////////
 String additionMsg = "";
@@ -112,6 +124,7 @@ const long intervalForSend = 60000;              // Как часто обраб
 String contNumber;
 int DirectControll = 0;
 int NormalMode = 0;
+int NormalModePrev = 0;
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 int counterTemp = 0;
@@ -133,6 +146,11 @@ int numFromEprom;
 
 long int randNumber = random(100000, 999999);
 
+//Музыка
+AudioGeneratorMP3 *mp3;
+AudioFileSourceICYStream *file;
+AudioFileSourceBuffer *buff;
+AudioOutputI2SNoDAC *out;
 
 ESP8266WebServer server(80);
 WiFiClient client;
@@ -171,8 +189,8 @@ void setup() {
   baseText += F("ul.hr li {display: inline; border-right: 1px solid #000; padding-right: 6px;text-transform:  uppercase;font-weight:  400;}\n");
   baseText += F("ul.hr li:last-child { border-right: none;}\n");
   baseText += F("</style>\n");
-  baseText += F("<html><head><title>WiseHouse Sensor v.0.8</title><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"></head>\n");
-  baseText += F("<body><div class=\"base\"><div class=\"header\"><div class=\"logo\"><h1 class=\"inset\">WiseHouse - Termostat</h1></div>\n");
+  baseText += F("<html><head><title>WiseHouse Radio v.0.8.2</title><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"></head>\n");
+  baseText += F("<body><div class=\"base\"><div class=\"header\"><div class=\"logo\"><h1 class=\"inset\">WiseHouse - Radio</h1></div>\n");
   baseText += F("<div class=\"menu\"><ul class=\"hr inset\">\n");
   baseText += F("<a href=\"/\"><li>Главная</li></a>\n");
   baseText += F("<a href=\"/config\"><li>Setup</li></a>\n");
@@ -182,13 +200,13 @@ void setup() {
   endText = "</div></div></body></html>\n";
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  EEPROM.begin(512);
+  EEPROM.begin(1024);
 
   // Прочитаем настройку на удаленный сервер
   Serial.println();
   Serial.println("------------------------------------------------");
   Serial.println("|                     WISEHOUSE                 |");
-  Serial.println("|Version - 0.8.1- 27.11.2021 - SOnoffRozetka    |");
+  Serial.println("|Version - 0.8.2- 27.11.2021 - Radio            |");
   Serial.println("------------------------------------------------");
   Serial.println();
   Serial.println("Read data from EEPROM...");
@@ -226,23 +244,49 @@ void setup() {
     Serial.print("DirectControll-: ");
     DirectControll = EEPROM.read(193);
     Serial.println(DirectControll);
+    Serial.print("Radio URL 1: ");
 
+    radioUrl = stringEpromRead(200, 240);
+    radioUrl = "http://" + radioUrl;
+    int str_len = radioUrl.length() + 1;
+    radioUrl.toCharArray(myStrings[0], str_len);
+    Serial.println(radioUrl);
+
+    radioUrl = stringEpromRead(241, 280);
+    radioUrl = "http://" + radioUrl;
+    str_len = radioUrl.length() + 1;
+    radioUrl.toCharArray(myStrings[1], str_len);
+    Serial.println(radioUrl);
+
+    radioUrl = stringEpromRead(281, 320);
+    radioUrl = "http://" + radioUrl;
+    str_len = radioUrl.length() + 1;
+    radioUrl.toCharArray(myStrings[2], str_len);
+    Serial.println(radioUrl);
+
+    radioUrl = stringEpromRead(321, 360);
+    radioUrl = "http://" + radioUrl;
+    str_len = radioUrl.length() + 1;
+    radioUrl.toCharArray(myStrings[3], str_len);
+    Serial.println(radioUrl);
 
   }
   delay(500);
 
   // соединяемся с извесными сетями
   connectToAP2();
-  
+
   Serial.print(F("NormalMode"));
   Serial.print(F(" - "));
   Serial.println(NormalMode);
-  
+
   if (NormalMode != 0) {
     // Проверяем есть ли мы в мажердоме
     testOrCreateObject();
+
   }
-  
+  NormalModePrev = NormalMode;
+
   // Определяем режим работы Или нормальный или если нажата кнопка настроечный
   Serial.println("+");
   for (int i = 0; i < 10; ++i) {
@@ -251,10 +295,12 @@ void setup() {
     delay(100);
     digitalWrite(PIN_LED, LOW);
     delay(100);
-   /// NormalMode = digitalRead(PIN_BUTTON);
+    if (NormalMode != 0) {
+      NormalModePrev = digitalRead(PIN_BUTTON);
+    }
   }
 
-
+  NormalMode = NormalModePrev;
 
   digitalWrite(PIN_LED, HIGH);
   delay(1000);
@@ -286,40 +332,24 @@ void setup() {
   Serial.println("HTTP SERVER STARTED");
   Serial.println("");
   Serial.println("");
+
+  if (NormalMode != 0) {
+    audioLogger = &Serial;
+    play();
+  }
+
 }
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void loop() {
-  currentMillis = millis();
-  //Проверим настроецный режим или обычный
   if (NormalMode == 1) {
-    //В цикле без задержек постоянно выполняем :
-    if (btn1.click()) {
-      Serial.println("click");
-      SendToServer("buttonPressed", "button", "1");
-    }
-    //раз в 2 секунды
-    if (currentMillis - previousMillis >= interval) {
-      previousMillis = currentMillis;
-      server.handleClient();
-    }
-    //раз в 60 секунд
-    if (currentMillis - previousMillisForSend >= intervalForSend) {
-      previousMillisForSend = currentMillis;
-      if ((ip1byte.toInt() != 255) && (ip1byte.toInt() != 0) ) {
-        SendToServer("keepalive", "alive", "1");
-        Serial.println("keepalive");
-      }
-    }
+    enc.tick();                       // опрос энкодера происходит здесь
+    run();
+    if (btn1.click()) nextStation();
+    if (enc.left()) nextStation();
+    if (enc.right()) prevStation();
 
-    uptime = ((currentMillis / 1000) / 60);
-
-    // Перезагружаем раз в 30 минут. На всякий случай
-    resetMinute = ((resetDelay - currentMillis) / 1000) / 60;
-    if (currentMillis  >= resetDelay) {
-      resetFunc(); //вызываем reset // пока закомментируем проверим аптайм TODO: Сделать из админки
-    }
   } else {
-
+    currentMillis = millis();
     // если выбран настроечный режим - Ничего не делаем, лишь обрабатываем сервер- ждем настройки
     if (currentMillis - previousMillis >= interval3) {
       previousMillis = currentMillis;
