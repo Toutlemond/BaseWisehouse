@@ -7,8 +7,9 @@
 //   24.09.2020 - Исправлен метод отправки на сервер
 //   03.11.2020 - Добавим поддержку 433 мГц устройств
 //   24.11.2024 - Добавил на пин кнопки сенсор утечки
+//   28.05.2025 - Добавил таймер для полива
 
-// Version 0.8.3
+// Version 0.8.4
 
 /// Задачи - При включении Должна коммутировать сразу свое реле. Если вдруг почуствует воду на контактах - должна разомкнуть свое реле
 
@@ -105,8 +106,11 @@ const long interval2 = 10000;             // Время через которо�
 const long interval3 = 2000;              // Как часто обрабатывать WEB-запросы
 const long intervalForSend = 60000;              // Как часто обрабатывать WEB-запросы
 String contNumber;
+String timeString;
 int DirectControll = 0;
 int NormalMode = 0;
+int TimeOut = 0;
+boolean isPinOn = 0;
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 int sensorValue = 0;
@@ -185,7 +189,7 @@ void setup() {
   Serial.println();
   Serial.println("-----------------------------------------------");
   Serial.println("|                     WISEHOUSE               |");
-  Serial.println("|Version - 0.8.3- 24.11.2024 - BasementWater  |");
+  Serial.println("|Version - 0.8.4- 28.05.2025-GrassWaterTimer  |");
   Serial.println("-----------------------------------------------");
   Serial.println();
   Serial.println("Read data from EEPROM...");
@@ -275,6 +279,7 @@ void setup() {
   server.on("/contacts", handleContacts);
   server.on("/on", handleOn);
   server.on("/click", handleClick);
+  server.on("/timer", handleTimer);
   server.on("/off", handleOff);
 
 
@@ -288,55 +293,38 @@ void setup() {
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void loop() {
   currentMillis = millis();
-  //Проверим настроецный режим или обычный
+  //Проверим настроечный режим или обычный
   if (NormalMode == 1) {
-
-    //раз в 2 секунды
-    if (currentMillis - previousMillis >= interval) {
-      // read the value from the sensor:
-      sensorValue = analogRead(REOSTATPIN);
-      Serial.print("sensorValue: ");
-      Serial.println(sensorValue);
-      
-      if (btn1.click() &&  isWater != 1 ) {
-        isWater = 1;
-        Serial.println("Water!!!");
-        digitalWrite(PIN_RELAY, LOW);
-        digitalWrite(PIN_LED, LOW);
-
-        SendToServer("buttonPressed", "button", "1");
-      }
-
-    }
     //раз в 2 секунды
     if (currentMillis - previousMillis >= interval3) {
-      //В цикле без задержек постоянно выполняем :
-      if (btn1.click() &&  isWater != 1 ) {
-        Serial.println("Water!!!");
-        digitalWrite(PIN_RELAY, LOW);
-        digitalWrite(PIN_LED, LOW);
-        isWater = 1;
-        SendToServer("buttonPressed", "button", "1");
-      }
       previousMillis = currentMillis;
+      if (TimeOut > 0 ) {
+        if (isPinOn != 1) {
+          isPinOn = 1;
+          Serial.println("timer On");
+          digitalWrite(PIN_RELAY, HIGH);
+          digitalWrite(PIN_LED, HIGH);
+        }
+        TimeOut = TimeOut - interval3;
+        Serial.println(TimeOut);
+      } else {
+        if (isPinOn != 0) {
+          TimeOut = 0;
+          isPinOn = 0;
+          digitalWrite(PIN_RELAY, LOW);
+          digitalWrite(PIN_LED, LOW);
+          Serial.println("timer off");
+        }
+      }
       server.handleClient();
     }
     //раз в 60 секунд
     if (currentMillis - previousMillisForSend >= intervalForSend) {
-      digitalWrite(PIN_LED, HIGH);
       previousMillisForSend = currentMillis;
       if ((ip1byte.toInt() != 255) && (ip1byte.toInt() != 0) ) {
         SendToServer("keepalive", "alive", "1");
         Serial.println("keepalive");
       }
-      if (isWater == 0) {
-        digitalWrite(PIN_RELAY, HIGH);
-        Serial.println("NO Water!");
-      } else {
-        digitalWrite(PIN_RELAY, LOW);
-      }
-
-      digitalWrite(PIN_LED, LOW);
     }
 
     uptime = ((currentMillis / 1000) / 60);
@@ -356,6 +344,11 @@ void loop() {
       // см. https://esp8266.ru/forum/threads/apparatnoe-preryvanie-vyzyvaet-perezagruzku-esp8266.938/page-2#post-18584
       server.handleClient();
 
+    }
+    // Перезагружаем раз в 30 минут. На всякий случай
+    resetMinute = ((resetDelay - currentMillis) / 1000) / 60;
+    if (currentMillis  >= resetDelay) {
+      resetFunc(); //вызываем reset // пока закомментируем проверим аптайм TODO: Сделать из админки
     }
   }
 

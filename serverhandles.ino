@@ -17,7 +17,7 @@ void handleRoot() {
   contentText += "<p><strong>Время до перезагрузки- ";
   contentText += resetMinute;
   contentText += " мин</strong></p>";
-    contentText += "<p><strong>Uptime системы- ";
+  contentText += "<p><strong>Uptime системы- ";
   contentText += uptime;
   contentText += " мин</strong></p>";
 
@@ -37,7 +37,7 @@ void handleRoot() {
   server.send(200, "text/html", htmlText);
 }
 
-void handleClick(){
+void handleClick() {
   contNumber = server.arg("contNumber");
   htmlText = "";
   contentText = "";
@@ -50,13 +50,36 @@ void handleClick(){
   htmlText = baseText;
   htmlText += contentText;
   htmlText += endText;
-  
-   digitalWrite(contNumber.toInt(), HIGH);
-    delay(1000);
-    digitalWrite(contNumber.toInt(), LOW);
-    //Serial.print("Clicked");
+
+  digitalWrite(contNumber.toInt(), HIGH);
+  delay(1000);
+  digitalWrite(contNumber.toInt(), LOW);
+  //Serial.print("Clicked");
   server.send(200, "text/html", htmlText);
+}
+
+void handleTimer() {
+  timeString = server.arg("time");
+  int timerSec = timeString.toInt();
+  if (timerSec != 0) {
+    TimeOut = timerSec * 1000;
+    Serial.print(TimeOut);
+  } else {
+    timeString = TimeOut;
   }
+  htmlText = "";
+  contentText = "";
+  contentText = "<h4>Кликнуть контакт на определенное время</h4>\n";
+  contentText += "<hr>\n";
+  contentText += "<p>Время в секундах - \n";
+  contentText += timeString;
+  contentText += "</p>\n";
+
+  htmlText = baseText;
+  htmlText += contentText;
+  htmlText += endText;
+  server.send(200, "text/html", htmlText);
+}
 
 void handleOn() {
   contNumber = server.arg("contNumber");
@@ -144,9 +167,9 @@ void handleConfig() {
       contentText += WiFi.SSID(i);
       contentText += ((WiFi.encryptionType(i) == ENC_TYPE_NONE) ? "</option> " : "*</option>");
       delay(10);
-     
+
     }
-   contentText += F("<select></span></p>\n");
+    contentText += F("<select></span></p>\n");
   }
 
   contentText += F("<p>Пароль сети___________ <span class=\"bold\"><input type=\"text\" name=\"pass\" value=\"");
