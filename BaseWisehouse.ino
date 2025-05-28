@@ -1,4 +1,4 @@
-//// Прошивка для розеток sonoff
+//// Прошивка для Датчика протечки в подвале.
 ///  14.10.2016
 ///  16.10.2017 - добавил выравнивание в HTML
 //   15.10.2018 - Добавлена функция перезагрузки каждые 500 000 мс
@@ -6,10 +6,11 @@
 //   05.09.2019 - Сделана как базовая. Убраны некоторые вещи.
 //   24.09.2020 - Исправлен метод отправки на сервер
 //   03.11.2020 - Добавим поддержку 433 мГц устройств
+//   24.11.2024 - Добавил на пин кнопки сенсор утечки
 
-// Version 0.8.1
+// Version 0.8.3
 
-/// Задачи -
+/// Задачи - При включении Должна коммутировать сразу свое реле. Если вдруг почуствует воду на контактах - должна разомкнуть свое реле
 
 
 /// 2. WiFI
@@ -51,16 +52,16 @@
 #include <ESP8266WebServer.h>
 #include <ESP8266HTTPClient.h>
 #include <EEPROM.h>
-//#include <DHT.h>
 
 #include "button.h"
 
 
 ///////////////////////////////////НАЗНАЧЕНИЕ НОЖЕК ////////////////////////////////////////////////////
 
-int PIN_RELAY = 12;
-int PIN_LED = 13;
+int PIN_RELAY = 5;
+int PIN_LED = 4;
 int PIN_BUTTON = 0;
+#define REOSTATPIN A0
 
 Button btn1(PIN_BUTTON);
 
@@ -70,9 +71,6 @@ const char *password = "12345678";
 
 const int configBite = 20;
 int tryCount = 0;
-int TempModul = 0; //
-
-int contact = 0; //
 
 /// Далее 21,22,23,24 байты это будет адрес сервера.
 String ip1byte = "";
@@ -92,9 +90,6 @@ String baseText;
 String contentText;
 String endText;
 String htmlText;
-String sinkText = "Нет";
-String gasText = "Нет";
-String heatText = "Охлаждаем";
 String webString = "";                    // Строка для отображение
 unsigned long currentMillis;               // Сами секунды
 unsigned long previousMillis = 0;         // когда считано последнее значение
@@ -105,7 +100,7 @@ unsigned long previousOncePerSecond = 0;
 unsigned long previousOncePerTwoSecond = 0;
 unsigned long previousOncePerMinute = 0;
 unsigned long previousOncePerHour = 0;
-const long interval = 2000;               // как часто читать сенсор
+const long interval = 300;                // как часто читать сенсор
 const long interval2 = 10000;             // Время через которое пора спать
 const long interval3 = 2000;              // Как часто обрабатывать WEB-запросы
 const long intervalForSend = 60000;              // Как часто обрабатывать WEB-запросы
@@ -114,7 +109,9 @@ int DirectControll = 0;
 int NormalMode = 0;
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+int sensorValue = 0;
 int counterTemp = 0;
+int isWater = 0;                          // Наличие воды
 boolean iSleep = 0;
 const int deepSlp = 0;                    // Включать ли функцию Глубокого сна
 int resetDelay = 1800000;
@@ -186,10 +183,10 @@ void setup() {
 
   // Прочитаем настройку на удаленный сервер
   Serial.println();
-  Serial.println("------------------------------------------------");
-  Serial.println("|                     WISEHOUSE                 |");
-  Serial.println("|Version - 0.8.1- 27.11.2021 - SOnoffRozetka    |");
-  Serial.println("------------------------------------------------");
+  Serial.println("-----------------------------------------------");
+  Serial.println("|                     WISEHOUSE               |");
+  Serial.println("|Version - 0.8.3- 24.11.2024 - BasementWater  |");
+  Serial.println("-----------------------------------------------");
   Serial.println();
   Serial.println("Read data from EEPROM...");
   ip1byte = EEPROM.read(21);
@@ -233,16 +230,16 @@ void setup() {
 
   // соединяемся с извесными сетями
   connectToAP2();
-  
+
   Serial.print(F("NormalMode"));
   Serial.print(F(" - "));
   Serial.println(NormalMode);
-  
+
   if (NormalMode != 0) {
     // Проверяем есть ли мы в мажердоме
     testOrCreateObject();
   }
-  
+
   // Определяем режим работы Или нормальный или если нажата кнопка настроечный
   Serial.println("+");
   for (int i = 0; i < 10; ++i) {
@@ -251,7 +248,7 @@ void setup() {
     delay(100);
     digitalWrite(PIN_LED, LOW);
     delay(100);
-   /// NormalMode = digitalRead(PIN_BUTTON);
+    /// NormalMode = digitalRead(PIN_BUTTON);
   }
 
 
@@ -286,29 +283,60 @@ void setup() {
   Serial.println("HTTP SERVER STARTED");
   Serial.println("");
   Serial.println("");
+
 }
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void loop() {
   currentMillis = millis();
   //Проверим настроецный режим или обычный
   if (NormalMode == 1) {
-    //В цикле без задержек постоянно выполняем :
-    if (btn1.click()) {
-      Serial.println("click");
-      SendToServer("buttonPressed", "button", "1");
-    }
+
     //раз в 2 секунды
     if (currentMillis - previousMillis >= interval) {
+      // read the value from the sensor:
+      sensorValue = analogRead(REOSTATPIN);
+      Serial.print("sensorValue: ");
+      Serial.println(sensorValue);
+      
+      if (btn1.click() &&  isWater != 1 ) {
+        isWater = 1;
+        Serial.println("Water!!!");
+        digitalWrite(PIN_RELAY, LOW);
+        digitalWrite(PIN_LED, LOW);
+
+        SendToServer("buttonPressed", "button", "1");
+      }
+
+    }
+    //раз в 2 секунды
+    if (currentMillis - previousMillis >= interval3) {
+      //В цикле без задержек постоянно выполняем :
+      if (btn1.click() &&  isWater != 1 ) {
+        Serial.println("Water!!!");
+        digitalWrite(PIN_RELAY, LOW);
+        digitalWrite(PIN_LED, LOW);
+        isWater = 1;
+        SendToServer("buttonPressed", "button", "1");
+      }
       previousMillis = currentMillis;
       server.handleClient();
     }
     //раз в 60 секунд
     if (currentMillis - previousMillisForSend >= intervalForSend) {
+      digitalWrite(PIN_LED, HIGH);
       previousMillisForSend = currentMillis;
       if ((ip1byte.toInt() != 255) && (ip1byte.toInt() != 0) ) {
         SendToServer("keepalive", "alive", "1");
         Serial.println("keepalive");
       }
+      if (isWater == 0) {
+        digitalWrite(PIN_RELAY, HIGH);
+        Serial.println("NO Water!");
+      } else {
+        digitalWrite(PIN_RELAY, LOW);
+      }
+
+      digitalWrite(PIN_LED, LOW);
     }
 
     uptime = ((currentMillis / 1000) / 60);
