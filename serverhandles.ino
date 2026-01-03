@@ -65,7 +65,7 @@ void handleTimer() {
     TimeOut = timerSec * 1000;
     Serial.print(TimeOut);
   } else {
-    timeString = TimeOut;
+    timeString = TimeOut/1000;
   }
   htmlText = "";
   contentText = "";
